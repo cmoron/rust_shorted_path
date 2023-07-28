@@ -8,44 +8,41 @@ mod graph;
 mod algorithms;
 
 // Use the Node, Edge and Graph structures from our graph module.
-use crate::graph::{Graph, Node, Edge};
+//use crate::graph::{Graph, Node, Edge};
 use crate::algorithms::{dijkstra::Dijkstra, shortest_path::ShortestPathAlgorithm};
+use crate::graph::graph_loader::load_from_file;
+use crate::graph::graph_loader::retrieve_start_end_nodes;
+use std::path::Path;
+use std::env;
 
 fn main() {
 
-    // Create nodes
-    let node1 = Node { id: 1 };
-    let node2 = Node { id: 2 };
-    let node3 = Node { id: 3 };
-    let node4 = Node { id: 4 };
-    let node5 = Node { id: 5 };
-    let node6 = Node { id: 6 };
+    // Get the arguments passed to the program. The first argument is the name of the program itself.
+    let args: Vec<String> = env::args().collect();
 
-    let edge1 = Edge { node1: 1, node2: 2, weight: 1 };
-    let edge2 = Edge { node1: 1, node2: 3, weight: 3 };
-    let edge3 = Edge { node1: 2, node2: 3, weight: 1 };
-    let edge4 = Edge { node1: 3, node2: 4, weight: 2 };
-    let edge5 = Edge { node1: 2, node2: 4, weight: 5 };
-    let edge6 = Edge { node1: 4, node2: 5, weight: 1 };
-    let edge7 = Edge { node1: 5, node2: 6, weight: 1 };
-    let edge8 = Edge { node1: 1, node2: 6, weight: 10 };
+    // Check if a file name was passed as an argument
+    if args.len() < 2 {
+        eprintln!("Please provide a file name");
+        std::process::exit(1);
+    }
 
-    let graph = Graph {
-        nodes: vec![node1.clone(), node2.clone(), node3.clone(), node4.clone(), node5.clone(), node6.clone()],
-        edges: vec![edge1.clone(), edge2.clone(), edge3.clone(), edge4.clone(), edge5.clone(), edge6.clone(), edge7.clone(), edge8.clone()],
-    };
+    // Load the graph and the expected shortest path from the file.
+    let (graph, expected_shortest_path) = load_from_file(Path::new(&args[1])).unwrap();
+    let (start_node, end_node) = retrieve_start_end_nodes(expected_shortest_path.clone()).unwrap();
 
     // Print our graph to the console.
     println!("{}", graph);
+    println!("{:?}", expected_shortest_path.clone());
 
     // Create a Dijkstra object
     let dijkstra = Dijkstra {};
 
+
     // Find the shortest path from node1 to node3
-    if let Some(path) = dijkstra.find_shortest_path(&graph, &node1, &node6) {
-        println!("Shortest path from node {} to node {}: {:?}", node1.id, node6.id, path);
+    if let Some(path) = dijkstra.find_shortest_path(&graph, start_node, end_node) {
+        println!("Shortest path from node {} to node {}: {:?}", start_node, end_node, path);
     } else {
-        println!("No path from node {} to node {}.", node1.id, node6.id);
+        println!("No path from node {} to node {}.", start_node, end_node);
     }
 }
 

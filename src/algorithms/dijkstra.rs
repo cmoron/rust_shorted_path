@@ -1,103 +1,162 @@
-//! Module pour l'algorithme de Dijkstra.
+//! Dijkstra module.
 //!
-//! Ce module contient la structure Dijkstra et son implémentation.
+//! This module contains the Dijkstra structure and its implementation.
 
-use std::cmp::Ordering;
-use std::collections::{BinaryHeap, HashMap};
-
-use crate::graph::{Graph, Node};
+use crate::graph::Graph;
 use crate::algorithms::shortest_path::ShortestPathAlgorithm;
+use std::collections::HashMap;
+use std::usize::MAX;
 
-// Représente l'état d'un noeud dans l'algorithme de Dijkstra,
-// contenant l'identifiant du noeud et le coût pour y parvenir.
-#[derive(Eq, PartialEq)]
-struct State {
-    node_id: usize,
-    cost: u32,
-}
-
-// Implémente Ord pour State, ce qui nous permet de les comparer
-// en fonction de leur coût pour déterminer quel noeud a le coût le plus bas.
-impl Ord for State {
-    fn cmp(&self, other: &Self) -> Ordering {
-        other.cost.cmp(&self.cost)
-    }
-}
-
-impl PartialOrd for State {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-/// Représente l'algorithme de Dijkstra.
+/// The Dijkstra structure.
+///
+/// This structure represents the Dijkstra shortest path algorithm.
 pub struct Dijkstra {}
 
 impl ShortestPathAlgorithm for Dijkstra {
-    // Implémente l'algorithme de Dijkstra pour trouver le chemin le plus court entre deux noeuds.
-    fn find_shortest_path(&self, graph: &Graph, start: &Node, end: &Node) -> Option<Vec<Node>> {
-        // Initialise les distances et les noeuds précédents.
-        let mut dist: HashMap<usize, u32> = HashMap::new();
-        let mut prev: HashMap<usize, usize> = HashMap::new();
+    /// Find the shortest path between `start` and `end` in the given `graph`.
+    ///
+    /// This method implements Dijkstra's algorithm to find the shortest path from the start node to
+    /// the end node. The graph must be connected; otherwise, the function will return None.
+    ///
+    /// # Arguments
+    ///
+    /// * `graph` - A reference to the graph where to find the path.
+    /// * `start` - The starting node id.
+    /// * `end` - The ending node id.
+    ///
+    /// # Returns
+    ///
+    /// * `Some(Vec<usize>)` - If a path is found, returns a vector of node ids representing the path from start to end.
+    /// * `None` - If no path is found, returns None.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let dijkstra = Dijkstra {};
+    /// let shortest_path = dijkstra.find_shortest_path(&graph, 1, 6);
+    ///
+    /// match shortest_path {
+    ///     Some(path) => println!("The shortest path is: {:?}", path),
+    ///     None => println!("There is no path between the nodes."),
+    /// }
+    /// ```
+    fn find_shortest_path(&self, graph: &Graph, start: usize, end: usize) -> Option<Vec<usize>> {
+        // Initialize the distances map with the maximum possible value.
+        // This represents the current known distance from `start` to each node.
+        // Initialize `start` with distance 0.
+        let mut distances: HashMap<usize, usize> = HashMap::new();
 
-        // Stocke les noeuds pour reconstruire le chemin à la fin.
-        let mut nodes: HashMap<usize, &Node> = HashMap::new();
+        // This map will hold the previous node for each node on the shortest path.
+        // It's how we'll reconstruct the shortest path at the end.
+        let mut previous: HashMap<usize, usize> = HashMap::new();
 
-        // Utilise un tas binaire pour stocker les noeuds par coût.
-        let mut heap = BinaryHeap::new();
+        // List of unvisited nodes. We start with all nodes unvisited.
+        let mut nodes: Vec<usize> = Vec::new();
 
-        // Ajoute le noeud de départ au tas avec un coût de 0.
-        dist.insert(start.id, 0);
-        heap.push(State { node_id: start.id, cost: 0 });
-
-        // Associe chaque identifiant de noeud à son objet Node correspondant.
+        // Initialize the data structures.
         for node in &graph.nodes {
-            nodes.insert(node.id, node);
+            distances.insert(node.id, MAX);
+            nodes.push(node.id);
         }
+        distances.insert(start, 0);
 
-        // Parcourt tous les noeuds dans le tas.
-        while let Some(State { node_id, cost }) = heap.pop() {
-            // Ignore les noeuds dont le coût est plus élevé que le coût stocké.
-            if cost > *dist.get(&node_id).unwrap() { continue; }
+        // Main loop. We will keep running until we've visited all nodes, or
+        // we've confirmed the shortest path to the end node.
+        while let Some((closest_node, _)) = nodes.iter().map(|n| (*n, *distances.get(n).unwrap())).min_by_key(|&(_, dist)| dist) {
+            // We're done if the closest node is the end node or all remaining nodes are inaccessible from the start node.
+            if closest_node == end || distances[&closest_node] == MAX {
+                break;
+            }
 
-            // Parcourt tous les voisins du noeud actuel.
+            // Remove this node from the list of unvisited nodes.
+            nodes.retain(|&n| n != closest_node);
+
+            // Update distances to neighboring nodes.
             for edge in &graph.edges {
-                if edge.node1 == node_id {
-                    // Crée un nouvel état pour le voisin avec le coût du chemin jusqu'à ce point.
-                    let next_node_id = edge.node2;
-                    let next_cost = cost + edge.weight;
+                // Determine the neighbor and the distance to that neighbor via the closest_node.
+                let (neighbor, alt_dist) = if edge.node1 == closest_node { (edge.node2, distances[&closest_node] + edge.weight) }
+                else if edge.node2 == closest_node { (edge.node1, distances[&closest_node] + edge.weight) }
+                else { continue };
 
-                    let next = State { node_id: next_node_id, cost: next_cost };
-
-                    // Si le coût du voisin est inférieur au coût stocké, met à jour le coût et ajoute le voisin au tas.
-                    if next.cost < *dist.get(&next.node_id).unwrap_or(&u32::MAX) {
-                        heap.push(next);
-                        dist.insert(next_node_id, next_cost);
-                        prev.insert(next_node_id, node_id);
-                    }
+                // If we've found a shorter path to the neighbor, update the distance and previous node.
+                if alt_dist < distances[&neighbor] {
+                    distances.insert(neighbor, alt_dist);
+                    previous.insert(neighbor, closest_node);
                 }
             }
         }
 
-        // Reconstruit le chemin en partant du noeud final.
+        // Build the shortest path by following the trail from end to start.
         let mut path = Vec::new();
-        let mut current = end.id;
+        let mut current = end;
 
-        while current != start.id {
-            if let Some(prev_node) = prev.get(&current) {
-                path.push(nodes[&current].clone());
-                current = *prev_node;
-            } else {
-                // Si aucun chemin n'a été trouvé, renvoie None.
-                return None;
+        while let Some(prev_node) = previous.get(&current) {
+            path.push(current);
+            current = *prev_node;
+        }
+        path.push(current);
+
+        // The path is from `end` to `start`, so reverse it and return.
+        path.reverse();
+
+        // If the path is empty or it doesn't start at `start`, then there's no path from `start` to `end`.
+        if path.is_empty() || *path.first().unwrap() != start {
+            None
+        } else {
+            Some(path)
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    //! This module contains the tests for the Dijkstra module.
+    use super::*;
+    use std::path::PathBuf;
+    use crate::graph::graph_loader::load_from_file;
+    use crate::graph::graph_loader::retrieve_start_end_nodes;
+
+    /// This function returns all the file paths in the "resources" directory.
+    ///
+    /// # Returns
+    ///
+    /// * `Vec<PathBuf>` - A vector of PathBuf objects each representing a file path in the "resources" directory.
+    fn get_resource_files() -> Vec<PathBuf> {
+        let mut files = Vec::new();
+        let dir = PathBuf::from("resources");
+
+        if dir.is_dir() {
+            for entry in std::fs::read_dir(dir).unwrap() {
+                let entry = entry.unwrap();
+                let path = entry.path();
+                if path.is_file() {
+                    files.push(path);
+                }
             }
         }
 
-        path.push(nodes[&start.id].clone());
-        path.reverse();
+        files
+    }
 
-        // Renvoie le chemin en tant que vecteur de noeuds.
-        Some(path)
+    #[test]
+    /// Test the Dijkstra's find_shortest_path function using the graph files from the "resources" directory.
+    ///
+    /// This test function uses each file in the "resources" directory to create a graph and test the Dijkstra's find_shortest_path function.
+    /// It compares the output of the function with the expected output from the file.
+    fn test_find_shortest_path() {
+        let dijkstra = Dijkstra {};
+        let files = get_resource_files();
+        for file in &files {
+            let (graph, expected_shortest_path) = load_from_file(file).unwrap();
+            let (start_node, end_node) = retrieve_start_end_nodes(expected_shortest_path.clone()).unwrap();
+
+            let result = dijkstra.find_shortest_path(&graph, start_node, end_node);
+            let mut expected_result = Some(expected_shortest_path);
+            if file.to_string_lossy() == "resources/not_connected_graph.txt" {
+                expected_result = None;
+            }
+            assert_eq!(result, expected_result, "Failed on file: {}", file.display());
+        }
     }
 }
 

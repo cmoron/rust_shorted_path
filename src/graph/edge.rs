@@ -14,5 +14,5 @@ pub struct Edge {
     /// The ending node of the edge.
     pub node2: usize,
     /// The weight of the edge.
-    pub weight: u32,
+    pub weight: usize,
 }

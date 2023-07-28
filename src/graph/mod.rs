@@ -5,12 +5,13 @@
 //! allow printing it to the console.
 
 // Import the node and edge modules.
-mod node;
-mod edge;
+pub mod node;
+pub mod edge;
+pub mod graph_loader;
 
-// Re-export the Node and Edge structures so they can be used outside this module.
-pub use node::Node;
-pub use edge::Edge;
+// Import the Node and Edge types from the submodules.
+use node::Node;
+use edge::Edge;
 
 use std::fmt;
 

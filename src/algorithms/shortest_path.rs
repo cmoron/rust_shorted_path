@@ -1,4 +1,4 @@
-use crate::graph::{Graph, Node};
+use crate::graph::Graph;
 
 /// `ShortestPathAlgorithm` is a trait representing a shortest path algorithm.
 ///
@@ -10,14 +10,14 @@ pub trait ShortestPathAlgorithm {
     /// # Arguments
     ///
     /// * `graph` - A reference to the graph where to find the path.
-    /// * `start` - The starting node.
-    /// * `end` - The ending node.
+    /// * `start` - The starting node id.
+    /// * `end` - The ending node id.
     ///
     /// # Returns
     ///
-    /// * `Some(Vec<Node>)` - If a path is found, returns a vector of nodes 
+    /// * `Some(Vec<usize>)` - If a path is found, returns a vector of nodes id.
     /// representing the path from start to end.
     /// * `None` - If no path is found, returns None.
-    fn find_shortest_path(&self, graph: &Graph, start: &Node, end: &Node) -> Option<Vec<Node>>;
+    fn find_shortest_path(&self, graph: &Graph, start: usize, end: usize) -> Option<Vec<usize>>;
 }
 
